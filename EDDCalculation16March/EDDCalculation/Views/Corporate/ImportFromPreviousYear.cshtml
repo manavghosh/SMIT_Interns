@@ -1,0 +1,24 @@
+﻿@model IEnumerable<EDDCalculation.Models.eventListClass>
+
+<link rel="stylesheet" href="~/Content/Site.css" />
+
+
+<table>
+    <tr>
+        <th>Occassion</th>
+        <th>Date</th>
+        <th>Day</th>
+    </tr>
+    @{
+        foreach (var obj in Model)
+        {
+            <tr>
+                <td>@obj.title</td>
+                <td>@Convert.ToDateTime(obj.start).ToString("d", new System.Globalization.CultureInfo("fr-FR"))</td>
+                <td>@obj.start.AsDateTime().Date.DayOfWeek</td>
+            </tr>
+        }
+    }
+</table>
+
+

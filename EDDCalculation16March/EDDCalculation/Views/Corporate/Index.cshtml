@@ -1,0 +1,266 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+
+    <link href='~/Content/fullcalendar.css' rel='stylesheet' />
+    <link href='~/Content/fullcalendar.print.css' rel='stylesheet' media='print' />
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+    <script src='~/Scripts/moment.min.js'></script>
+    <script src='~/Scripts/jquery.min.js'></script>
+    <script src='~/Scripts/fullcalendar.min.js'></script>
+    <script>
+
+        $(document).ready(function () {
+            $('#eventForm').hide();
+
+            var oldEventData = null;
+            $('#calendar').fullCalendar({
+                header: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'month,agendaWeek,agendaDay'
+                },
+                defaultView: 'month',
+                events: '/Corporate/getDatabaseEvents/',
+
+                // selectable: true,
+                selectHelper: true,
+                editable: true,
+                eventLimit: true, // allow "more" link when too many events
+                dayClick: function (date, jsEvent, view) {
+
+                    ShowEventPopup(date);
+                },
+                eventClick: function (calEvent, jsEvent, view) {
+
+                    $('#eventForm').show();
+                    $('#deleteButton').show();
+                    $('#eventTitle').val(calEvent.title);
+                    if (calEvent.backgroundColor.search("Green") != -1) {
+                        $('#Green').prop("checked", true);
+                    }
+                    else {
+                        $('#Orange').prop("checked", true);
+                    }
+                    $('#eventTitle').focus();
+                    $('#eventDate').val(moment(calEvent.start).format("MM/DD/YYYY"));
+                    $('#saveButton').html("Update");
+                    oldEventData = {
+                        title: calEvent.title,
+                        start: calEvent.start,
+                        backgroundColor: calEvent.backgroundColor
+                    };
+
+                }
+            });
+            $('#deleteButton').click(function () {
+                var eventData = {
+                    title: $('#eventTitle').val(),
+                    start: $('#eventDate').val(),
+                    backgroundColor: $('input:checked').val()
+                };
+                deleteData(eventData);
+            });
+
+            $('#cancelButton').click(function () {
+                ClearPopupFormValues();
+                $('#eventForm').hide();
+
+            });
+
+            $('#saveButton').click(function () {
+
+                var eventData = {
+                    title: $('#eventTitle').val(),
+                    start: $('#eventDate').val(),
+                    end: $('#eventDate').val(),
+                    backgroundColor: $('input:checked').val(),
+                    allDay: 'true'
+                };
+                if (oldEventData == null) {
+                    sendData(eventData);
+                }
+                else {
+                    updateData(eventData, oldEventData);
+                    oldEventData = null;
+                    //$('#calendar').fullCalendar('addEventSource', '/Corporate/getDatabaseEvents/');
+                }
+            });
+
+            $('#calendarPlanner').css({
+                "margin-left": "57%"
+            });
+
+        });
+        function updateData(eventData, oldEventData) {
+
+            $.ajax({
+                type: 'POST',
+                url: '/Corporate/UpdateHolidayDatabase',
+                data: {
+                    'newEventTitle': eventData.title,
+                    'eventStart': eventData.start,
+                    'oldEventTitle': oldEventData.title,
+                    'oldEventColor': oldEventData.backgroundColor,
+                    'newEventColor': eventData.backgroundColor
+                }
+            });
+            var oldData = {
+                title: oldEventData.title,
+                start: eventData.start,
+                allDay: 'true',
+                backgroundColor: oldEventData.backgroundColor
+            };
+            $('#eventForm').hide();
+
+            // $('#calendar').fullCalendar('removeEvents');
+
+            $('#calendar').fullCalendar('removeEventSource', '/Corporate/getDatabaseEvents/');
+
+            alert("Event updated");
+
+            $('#calendar').fullCalendar('addEventSource', '/Corporate/getDatabaseEvents/');
+
+            // $('#calendar').fullCalendar('rerenderEvents');
+        }
+        function sendData(eventData) {
+
+            //$('#calendar').fullCalendar('renderEvent', eventData, false);
+            $.ajax({
+                type: 'POST',
+                url: '/Corporate/AddEventToDatabase',
+                data: {
+                    'eventTitle': eventData.title,
+                    'eventStart': eventData.start,
+                    'eventEnd': eventData.end,
+                    'eventColor': eventData.backgroundColor
+                }
+            });
+            $('#eventForm').hide();
+            //$('#calendar').fullCalendar('renderEvent',eventData);
+
+            $('#calendar').fullCalendar('removeEventSource', '/Corporate/getDatabaseEvents/');
+
+            alert("Event inserted");
+            //$('#calendar').fullCalendar('removeEvents');
+
+            $('#calendar').fullCalendar('addEventSource', '/Corporate/getDatabaseEvents/');
+
+            // $('#calendar').fullCalendar('addEventSource', '/Corporate/getNew/');Working
+
+        }
+        function deleteData(eventData) {
+            $.ajax({
+                type: 'POST',
+                url: '/Corporate/DeleteEventFromCorporateDatabase',
+                data: {
+                    'eventTitle': eventData.title,
+                    'eventStart': eventData.start,
+                    'eventColor': eventData.backgroundColor
+                }
+
+            });
+            $('#eventForm').hide();
+
+            $('#calendar').fullCalendar('removeEventSource', '/Corporate/getDatabaseEvents/');
+
+            alert("Event deleted");
+
+            $('#calendar').fullCalendar('addEventSource', '/Corporate/getDatabaseEvents/');
+        }
+        function ShowEventPopup(date) {
+
+            ClearPopupFormValues();
+            $('#eventDate').val(moment(date).format("MM/DD/YYYY"));
+            $('#eventForm').show();
+            $('#deleteButton').hide();
+            $('#eventTitle').focus();
+            $('#saveButton').html("Save");
+        }
+
+        function ClearPopupFormValues() {
+            $('#eventTitle').val("");
+            $('#eventDate').val("");
+            $('#Green').prop('checked', true);
+
+        }
+
+
+    </script>
+    <style>
+        body {
+            margin: 40px 10px;
+            padding: 0;
+            font-family: "Lucida Grande",Helvetica,Arial,Verdana,sans-serif;
+            font-size: 14px;
+        }
+
+        #calendar {
+            max-width: 500px; /*Original 900 px*/
+            margin: 0 auto;
+        }
+
+        #eventForm {
+            margin-left: 30%;
+        }
+    </style>
+</head>
+@model IEnumerable<String>
+<body>
+
+    <div class="container">
+        <div class="row">
+            <div>
+                Select country:
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                        Country <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        @foreach (var obj in Model)
+                        {
+                            <li>@obj</li>
+                        }
+                    </ul>
+                </div>
+
+            </div>
+            <div id='calendar'></div>
+        </div>
+    </div>
+    <div>
+        <a href="/Corporate/CalendarPlanner/" id="calendarPlanner" class="btn btn-secondary">Go to Calendar Planner</a>
+    </div>
+    <div class="container col-sm-6" id="eventForm">
+        <h2>Event form</h2>
+        <form role="form">
+            <div class="form-group">
+                <label for="eventTitle">Title:</label>
+                <input type="text" class="form-control" id="eventTitle" placeholder="Enter title">
+            </div>
+            <div class="form-group">
+                <label for="eventDate">Date:</label>
+                <input type="date" class="form-control" id="eventDate" placeholder="Enter date" readonly>
+            </div>
+            <div class="form-group">
+                <label for="eventColor">Select Color:</label><br />
+                <input type="radio" name="eventColor" id="Green" value="Green" checked />Green<br />
+                <input type="radio" name="eventColor" id="Orange" value="Orange" />Orange<br />
+            </div>
+            <button type="button" class="btn btn-default" id="saveButton">Save</button>
+            <button type="button" class="btn btn-default" id="cancelButton">Cancel</button>
+            <button type="button" class="btn btn-default " id="deleteButton">Delete</button>
+        </form>
+    </div>
+    <hr />
+    <label for="Legends">Legends</label><br />
+    Green for weekends and Orange for holidays
+</body>
+</html>
